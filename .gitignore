@@ -1,0 +1,65 @@
+﻿# ============================================================
+# Java / Maven
+# ============================================================
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Maven wrapper cache
+.mvn/wrapper/maven-wrapper.jar
+
+# ============================================================
+# IDE — IntelliJ IDEA
+# ============================================================
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# IDE — Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# IDE — VS Code
+.vscode/
+
+# ============================================================
+# OS
+# ============================================================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+
+# ============================================================
+# Secrets / Environment — NEVER commit these
+# ============================================================
+.env
+.env.*
+*.properties.local
+secrets/
+credentials/
+
+# ============================================================
+# Docker local overrides
+# ============================================================
+docker-compose.override.yml
+
+# ============================================================
+# Logs
+# ============================================================
+*.log
+logs/
+spring.log
