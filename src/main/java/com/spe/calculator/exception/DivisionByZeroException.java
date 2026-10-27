@@ -1,4 +1,4 @@
-﻿package com.spe.calculator.exception;
+package com.spe.calculator.exception;
 
 /**
  * Thrown by {@code CalculatorService} when a division by zero is attempted.

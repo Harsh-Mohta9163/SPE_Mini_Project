@@ -1,4 +1,4 @@
-﻿package com.spe.calculator.exception;
+package com.spe.calculator.exception;
 
 import com.spe.calculator.dto.ErrorResponse;
 import org.springframework.http.HttpStatus;

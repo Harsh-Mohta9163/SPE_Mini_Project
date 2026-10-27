@@ -1,4 +1,4 @@
-﻿package com.spe.calculator.controller;
+package com.spe.calculator.controller;
 
 import com.spe.calculator.dto.CalculatorResponse;
 import com.spe.calculator.service.CalculatorService;
