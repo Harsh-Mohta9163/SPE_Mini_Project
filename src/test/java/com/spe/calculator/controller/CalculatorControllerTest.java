@@ -1,4 +1,4 @@
-﻿package com.spe.calculator.controller;
+package com.spe.calculator.controller;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

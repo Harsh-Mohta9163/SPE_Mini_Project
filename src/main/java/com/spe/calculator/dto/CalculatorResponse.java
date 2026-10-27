@@ -1,4 +1,4 @@
-﻿package com.spe.calculator.dto;
+package com.spe.calculator.dto;
 
 /**
  * Standard success response returned by all calculator endpoints.

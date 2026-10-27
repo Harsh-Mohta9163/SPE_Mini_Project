@@ -1,4 +1,4 @@
-﻿package com.spe.calculator.dto;
+package com.spe.calculator.dto;
 
 /**
  * Error response returned for invalid inputs or illegal operations.
