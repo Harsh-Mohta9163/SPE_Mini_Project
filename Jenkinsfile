@@ -33,6 +33,9 @@ pipeline {
         // Service verification URLs
         HEALTHCHECK_URL = 'http://localhost/actuator/health'
         SMOKE_TEST_URL = 'http://localhost/api/v1/add?a=10&b=20'
+
+        // Prepend Windows tools to PATH so Jenkins Windows service can locate git, sh, mvn, docker, python
+        PATH = "C:\\Program Files\\Git\\bin;C:\\Program Files\\Git\\usr\\bin;C:\\Program Files\\Git\\cmd;C:\\Users\\dell\\maven\\bin;C:\\Users\\dell\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin;C:\\Users\\dell\\AppData\\Local\\Programs\\Python\\Python312;C:\\Users\\dell\\AppData\\Local\\Programs\\Python\\Python312\\Scripts;${env.PATH}"
     }
 
     stages {
@@ -46,9 +49,18 @@ pipeline {
                 echo "=========================================="
                 checkout scm
                 script {
-                    def commitHash = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    def commitAuthor = sh(script: 'git log -1 --pretty=format:"%an <%ae>"', returnStdout: true).trim()
-                    def commitMessage = sh(script: 'git log -1 --pretty=format:"%s"', returnStdout: true).trim()
+                    def commitHash = ""
+                    def commitAuthor = ""
+                    def commitMessage = ""
+                    if (isUnix()) {
+                        commitHash = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                        commitAuthor = sh(script: 'git log -1 --pretty=format:"%an <%ae>"', returnStdout: true).trim()
+                        commitMessage = sh(script: 'git log -1 --pretty=format:"%s"', returnStdout: true).trim()
+                    } else {
+                        commitHash = bat(script: '@git rev-parse --short HEAD', returnStdout: true).trim()
+                        commitAuthor = bat(script: '@git log -1 --pretty=format:"%%an <%%ae>"', returnStdout: true).trim()
+                        commitMessage = bat(script: '@git log -1 --pretty=format:"%%s"', returnStdout: true).trim()
+                    }
                     echo "Checked out commit: ${commitHash}"
                     echo "Commit Author:     ${commitAuthor}"
                     echo "Commit Subject:    ${commitMessage}"
@@ -64,8 +76,13 @@ pipeline {
                 echo "=========================================="
                 echo "Stage 2: Compile & Package Application"
                 echo "=========================================="
-                // Compile & package executable fat-JAR skipping tests (run in dedicated stage)
-                sh 'mvn clean package -DskipTests -B'
+                script {
+                    if (isUnix()) {
+                        sh 'mvn clean package -DskipTests -B'
+                    } else {
+                        bat 'mvn clean package -DskipTests -B'
+                    }
+                }
                 
                 // Archive the generated executable JAR as a build artifact
                 archiveArtifacts artifacts: 'target/*.jar', fingerprint: true, allowEmptyArchive: false
@@ -80,8 +97,13 @@ pipeline {
                 echo "=========================================="
                 echo "Stage 3: Run Unit & Integration Tests"
                 echo "=========================================="
-                // Execute JUnit 5 unit tests and MockMvc integration tests
-                sh 'mvn test -B'
+                script {
+                    if (isUnix()) {
+                        sh 'mvn test -B'
+                    } else {
+                        bat 'mvn test -B'
+                    }
+                }
             }
             post {
                 always {
@@ -107,15 +129,22 @@ pipeline {
                 echo "=========================================="
                 script {
                     echo "Building Docker image: ${DOCKER_IMAGE_NAME}:${DOCKER_TAG} and ${DOCKER_IMAGE_NAME}:latest"
-                    sh """
-                        docker build \
-                            --build-arg BUILD_NUMBER=${DOCKER_TAG} \
-                            -t ${DOCKER_IMAGE_NAME}:${DOCKER_TAG} \
-                            -t ${DOCKER_IMAGE_NAME}:latest \
-                            .
-                    """
-                    echo "Docker image built successfully:"
-                    sh "docker images | grep ${APP_NAME} || true"
+                    if (isUnix()) {
+                        sh """
+                            docker build \
+                                --build-arg BUILD_NUMBER=${DOCKER_TAG} \
+                                -t ${DOCKER_IMAGE_NAME}:${DOCKER_TAG} \
+                                -t ${DOCKER_IMAGE_NAME}:latest \
+                                .
+                        """
+                        sh "docker images | grep ${APP_NAME} || true"
+                    } else {
+                        bat """
+                            docker build --build-arg BUILD_NUMBER=${DOCKER_TAG} -t ${DOCKER_IMAGE_NAME}:${DOCKER_TAG} -t ${DOCKER_IMAGE_NAME}:latest .
+                        """
+                        bat "docker images | findstr ${APP_NAME} || exit /b 0"
+                    }
+                    echo "Docker image built successfully."
                 }
             }
         }
@@ -136,16 +165,22 @@ pipeline {
                 )]) {
                     script {
                         echo "Authenticating with Docker Hub as ${DOCKERHUB_USER}..."
-                        sh 'echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USER" --password-stdin'
-                        
-                        echo "Pushing ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}..."
-                        sh "docker push ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}"
-                        
-                        echo "Pushing ${DOCKER_IMAGE_NAME}:latest..."
-                        sh "docker push ${DOCKER_IMAGE_NAME}:latest"
-                        
-                        echo "Cleaning up local Docker Hub authentication session..."
-                        sh 'docker logout'
+                        if (isUnix()) {
+                            sh 'echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USER" --password-stdin'
+                            echo "Pushing ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}..."
+                            sh "docker push ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}"
+                            echo "Pushing ${DOCKER_IMAGE_NAME}:latest..."
+                            sh "docker push ${DOCKER_IMAGE_NAME}:latest"
+                            sh 'docker logout'
+                        } else {
+                            bat 'echo %DOCKERHUB_PASSWORD% | docker login -u "%DOCKERHUB_USER%" --password-stdin'
+                            echo "Pushing ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}..."
+                            bat "docker push ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}"
+                            echo "Pushing ${DOCKER_IMAGE_NAME}:latest..."
+                            bat "docker push ${DOCKER_IMAGE_NAME}:latest"
+                            bat 'docker logout'
+                        }
+                        echo "Docker Hub publication completed successfully."
                     }
                 }
             }
@@ -161,58 +196,22 @@ pipeline {
                 echo "=========================================="
                 script {
                     echo "Deploying/updating multi-container stack (API + Nginx reverse proxy)..."
-                    // Pull updated latest image or recreate containers idempotently
-                    sh """
-                        docker compose down --remove-orphans || true
-                        docker compose up -d --force-recreate
-                    """
-                    
-                    echo "Verifying running containers..."
-                    sh "docker compose ps"
-                    
-                    echo "Awaiting service readiness and verifying Actuator health probe..."
-                    sh '''
-                        MAX_RETRIES=20
-                        RETRY_COUNT=1
-                        SUCCESS=0
-
-                        echo "Polling ${HEALTHCHECK_URL} for healthy status..."
-                        until [ $RETRY_COUNT -gt $MAX_RETRIES ]; do
-                            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${HEALTHCHECK_URL}" || true)
-                            if [ "$HTTP_STATUS" = "200" ]; then
-                                HEALTH_BODY=$(curl -s "${HEALTHCHECK_URL}" || true)
-                                echo "Healthcheck succeeded on attempt ${RETRY_COUNT}: ${HEALTH_BODY}"
-                                SUCCESS=1
-                                break
-                            fi
-                            echo "Attempt ${RETRY_COUNT}/${MAX_RETRIES}: Received HTTP ${HTTP_STATUS}, retrying in 3s..."
-                            sleep 3
-                            RETRY_COUNT=$((RETRY_COUNT + 1))
-                        done
-
-                        if [ $SUCCESS -ne 1 ]; then
-                            echo "ERROR: Deployment health verification failed after ${MAX_RETRIES} attempts!"
-                            echo "Diagnostic logs for calculator-api:"
-                            docker compose logs --tail=50 calculator-api
-                            echo "Diagnostic logs for nginx:"
-                            docker compose logs --tail=50 nginx
-                            exit 1
-                        fi
-                    '''
-
-                    echo "Performing automated smoke test through Nginx reverse proxy..."
-                    sh '''
-                        CALC_RESPONSE=$(curl -s "${SMOKE_TEST_URL}" || true)
-                        echo "Smoke test response from ${SMOKE_TEST_URL}:"
-                        echo "${CALC_RESPONSE}"
+                    if (isUnix()) {
+                        sh 'docker compose down --remove-orphans || true'
+                        sh 'docker compose up -d --force-recreate'
+                        sh 'docker compose ps'
                         
-                        if echo "${CALC_RESPONSE}" | grep -q '"result":30'; then
-                            echo "SUCCESS: Calculator API responded correctly through Nginx reverse proxy!"
-                        else
-                            echo "ERROR: Smoke test assertion failed! Expected result 30."
-                            exit 1
-                        fi
-                    '''
+                        echo "Verifying deployment health via automated smoke test suite..."
+                        sh 'python3 scripts/smoke_test.py || python scripts/smoke_test.py'
+                    } else {
+                        bat 'docker compose down --remove-orphans || exit /b 0'
+                        bat 'docker compose up -d --force-recreate'
+                        bat 'docker compose ps'
+                        
+                        echo "Verifying deployment health via automated smoke test suite..."
+                        bat 'python scripts/smoke_test.py'
+                    }
+                    echo "Deployment verified healthy and fully functional."
                 }
             }
         }
@@ -298,7 +297,11 @@ Troubleshooting Checklist:
         always {
             script {
                 echo "Pipeline execution finished. Cleaning up dangling Docker build cache..."
-                sh 'docker image prune -f || true'
+                if (isUnix()) {
+                    sh 'docker image prune -f || true'
+                } else {
+                    bat 'docker image prune -f || exit /b 0'
+                }
             }
         }
     }

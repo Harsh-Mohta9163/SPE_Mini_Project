@@ -28,6 +28,26 @@ print(f"  Calculator REST API - Deployment Verification Suite  ")
 print(f"  Target URL: {BASE_URL}")
 print(f"=======================================================\n")
 
+# Await service readiness before executing test suite
+print(f"Polling {BASE_URL}/actuator/health for service readiness...")
+ready = False
+for attempt in range(1, 21):
+    try:
+        req = urllib.request.Request(f"{BASE_URL}/actuator/health")
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            if resp.getcode() == 200:
+                body = json.loads(resp.read().decode('utf-8'))
+                if body.get("status") == "UP":
+                    print(f"Service is UP and ready (confirmed on attempt {attempt})!\n")
+                    ready = True
+                    break
+    except Exception:
+        pass
+    time.sleep(2)
+
+if not ready:
+    print(f"Note: Healthcheck did not confirm UP yet. Proceeding with assertions...\n")
+
 TEST_CASES = [
     {
         "name": "Spring Actuator Health Probe",
