@@ -1,219 +1,180 @@
-# Calculator REST API — SPE Mini-Project
+# Calculator REST API: SPE Mini-Project
 
-**CSE 816 — Software Production Engineering**
-M.Tech (CSE) | Term I, 2026-27 | Faculty: Prof. B. Thangaraju
+**CSE 816 Software Production Engineering** | M.Tech (CSE), Term I, 2026-27 | Faculty: Prof. B. Thangaraju
+**Student:** Harsh Mohta (IMT2023106)
 
-A production-style Calculator REST API built with **Java 17 + Spring Boot + Maven**, wrapped in a complete automated DevOps pipeline using **Git/GitHub → Jenkins → Docker → Docker Compose**.
+A Calculator REST API built with **Java 17 + Spring Boot + Maven**, wrapped in an automated CI/CD pipeline:
+**GitHub → Jenkins → Docker → Docker Hub → Docker Compose (with an Nginx reverse proxy)**.
+
+- Repository: https://github.com/Harsh-Mohta9163/SPE_Mini_Project
+- Docker Hub image: https://hub.docker.com/r/harsh9163/calculator-api
+- Report: [`IMT2023106_Harsh_Mohta.pdf`](IMT2023106_Harsh_Mohta.pdf)
 
 ---
 
 ## Architecture
 
-```
-[GitHub Push]
-     |
-     v
-[Jenkins Pipeline]
-  ├── Checkout
-  ├── Build   (mvn clean package)
-  ├── Test    (mvn test → JUnit XML)
-  ├── Docker Build (multi-stage)
-  ├── Push    (Docker Hub)
-  └── Deploy  (docker compose up -d)
-         |
-         v
-[Nginx :80] → [calculator-api :8080]
-```
+![Pipeline architecture](docs/architecture.png)
+
+*Flow from a developer push to a health-checked deployment. Shaded green: containers started by the Deploy stage.*
+
+## Tech stack
+
+| Layer         | Technology                              |
+|---------------|-----------------------------------------|
+| Language      | Java 17                                 |
+| Framework     | Spring Boot 3.3.4 (Web + Actuator)      |
+| Build         | Maven                                   |
+| Testing       | JUnit 5 + Spring MockMvc (22 tests)     |
+| CI/CD         | Jenkins, declarative Jenkinsfile        |
+| Container     | Docker, multi-stage, non-root user      |
+| Orchestration | Docker Compose (API + Nginx)            |
+| Registry      | Docker Hub                              |
+| VCS           | Git / GitHub (feature branches + PRs)   |
 
 ---
 
-## Tech Stack
+## REST API
 
-| Layer       | Technology              |
-|-------------|-------------------------|
-| Language    | Java 17                 |
-| Framework   | Spring Boot 3.3.4       |
-| Build       | Maven                   |
-| Testing     | JUnit 5 + MockMvc       |
-| CI/CD       | Jenkins (Declarative)   |
-| Container   | Docker (multi-stage)    |
-| Orchestration | Docker Compose        |
-| Registry    | Docker Hub              |
-| VCS         | Git / GitHub            |
+| Method | Endpoint                  | Behaviour                                  |
+|--------|---------------------------|--------------------------------------------|
+| GET    | `/api/v1/add?a=&b=`       | Returns a + b                              |
+| GET    | `/api/v1/subtract?a=&b=`  | Returns a - b                              |
+| GET    | `/api/v1/multiply?a=&b=`  | Returns a * b                              |
+| GET    | `/api/v1/divide?a=&b=`    | Returns a / b; b = 0 gives HTTP 400        |
+| GET    | `/actuator/health`        | Spring Actuator health probe (UP/DOWN)     |
 
----
-
-## REST API Endpoints
-
-| Method | Endpoint                     | Description                        |
-|--------|------------------------------|------------------------------------|
-| GET    | `/api/v1/add?a=&b=`      | Returns a + b                      |
-| GET    | `/api/v1/subtract?a=&b=` | Returns a - b                      |
-| GET    | `/api/v1/multiply?a=&b=` | Returns a * b                      |
-| GET    | `/api/v1/divide?a=&b=`   | Returns a / b (b=0 → HTTP 400)    |
-| GET    | `/actuator/health`           | Spring Actuator health probe       |
-
-### Sample Response
+Success (HTTP 200):
 ```json
-{
-  "operation": "add",
-  "a": 2,
-  "b": 3,
-  "result": 5
-}
+{"operation":"add","a":10.0,"b":20.0,"result":30.0}
 ```
 
-### Error Response (HTTP 400)
+Errors (HTTP 400, JSON body):
 ```json
-{
-  "error": "Division by zero is not allowed",
-  "a": 10,
-  "b": 0
-}
+{"error":"Division by zero is not allowed","a":10.0,"b":0.0}
+{"error":"Missing required parameter: b","a":0.0,"b":0.0}
+{"error":"Invalid value for parameter 'a': must be a number","a":0.0,"b":0.0}
 ```
 
 ---
 
-## Getting Started
+## Getting started
 
-### Prerequisites
-- Java 17+
-- Maven 3.8+
-- Docker & Docker Compose
+Prerequisites: Java 17+, Maven 3.8+, Docker with Docker Compose.
 
-### Build
 ```bash
-mvn clean package
+mvn clean package          # build the executable JAR
+mvn test                   # run 22 tests; JUnit XML goes to target/surefire-reports/
+java -jar target/calculator-1.0.0.jar      # run locally on :8080
 ```
 
-### Run Tests
-```bash
-mvn test
-```
-JUnit XML reports are generated in `target/surefire-reports/` for Jenkins.
-
-### Run Locally (JAR)
-```bash
-java -jar target/calculator-1.0.0.jar
-```
-
-### Run with Docker
+### Run the image on its own
+Host port 8080 is usually taken by Jenkins, so map to 8081:
 ```bash
 docker build -t calculator-api .
-docker run -p 8080:8080 calculator-api
+docker run -p 8081:8080 calculator-api
+curl http://localhost:8081/actuator/health
 ```
 
-### Run Full Stack (Docker Compose)
+### Run the full stack (API + Nginx)
 ```bash
 docker compose up -d
+docker compose ps          # calculator-api should show (healthy)
 ```
-API will be available via Nginx at `http://localhost/api/v1/...`
+The API is then served through Nginx at `http://localhost/`.
 
----
-
-## Sample API Calls
-
+### Try it
 ```bash
-# Add
-curl "http://localhost/api/v1/add?a=5&b=3"
-
-# Subtract
-curl "http://localhost/api/v1/subtract?a=10&b=4"
-
-# Multiply
-curl "http://localhost/api/v1/multiply?a=6&b=7"
-
-# Divide
-curl "http://localhost/api/v1/divide?a=10&b=2"
-
-# Divide by zero (expect HTTP 400)
-curl "http://localhost/api/v1/divide?a=10&b=0"
-
-# Health check
-curl "http://localhost/actuator/health"
+curl -s -w "\nHTTP %{http_code}\n" "http://localhost/api/v1/add?a=10&b=20"
+curl -s -w "\nHTTP %{http_code}\n" "http://localhost/api/v1/subtract?a=20&b=5"
+curl -s -w "\nHTTP %{http_code}\n" "http://localhost/api/v1/multiply?a=6&b=7"
+curl -s -w "\nHTTP %{http_code}\n" "http://localhost/api/v1/divide?a=20&b=4"
+curl -s -w "\nHTTP %{http_code}\n" "http://localhost/api/v1/divide?a=10&b=0"      # 400
+curl -s -w "\nHTTP %{http_code}\n" "http://localhost/actuator/health"
 ```
 
----
-
-## Project Structure
-
-```
-calculator-devops/
-  ├── src/
-  │   ├── main/
-  │   │   ├── java/com/spe/calculator/
-  │   │   │   ├── CalculatorApplication.java
-  │   │   │   ├── controller/CalculatorController.java
-  │   │   │   ├── service/CalculatorService.java
-  │   │   │   └── dto/
-  │   │   │       ├── CalculatorResponse.java
-  │   │   │       └── ErrorResponse.java
-  │   │   └── resources/application.properties
-  │   └── test/
-  │       └── java/com/spe/calculator/
-  │           ├── service/CalculatorServiceTest.java
-  │           └── controller/CalculatorControllerTest.java
-  ├── scripts/
-  │   ├── generate_pdf_report.py    # ReportLab academic PDF generator
-  │   ├── smoke_test.py             # Python multi-endpoint deployment verification
-  │   └── smoke_test.sh             # Bash multi-endpoint deployment verification
-  ├── pom.xml                       # Maven build specification (Spring Boot 3.3.4)
-  ├── Dockerfile                    # Multi-stage Docker build (Alpine JRE 17)
-  ├── .dockerignore                 # Excludes target/, .git/, and IDE artifacts
-  ├── docker-compose.yml            # Multi-container orchestration (API + Nginx)
-  ├── nginx.conf                    # Reverse proxy gateway configuration
-  ├── Jenkinsfile                   # Declarative 6-stage CI/CD pipeline
-  ├── REPORT.md                     # Comprehensive academic project report
-  ├── REPORT.html                   # Print-optimized HTML report
-  ├── SPE_Mini_Project_Report.pdf   # 3-Page evaluation PDF report
-  ├── SCREENSHOTS_GUIDE.md          # Guide for 5 required rubric screenshots
-  ├── DEMO_SCRIPT.md                # Live demonstration script & viva preparation
-  ├── PHASE_PLAN.md                 # 7-Phase implementation roadmap & tracker
-  ├── .gitignore                    # Git ignore file for Java, Maven, and OS files
-  └── README.md                     # Project overview and instructions
-```
-
----
-
-## Automated Smoke Testing
-
-To verify all endpoints and Actuator health probe in a single command against the running stack:
-
+### Smoke test (all endpoints, one command)
 ```bash
-# Python runner (cross-platform)
-python scripts/smoke_test.py
-
-# Or Bash runner
-bash scripts/smoke_test.sh
+python scripts/smoke_test.py            # or: bash scripts/smoke_test.sh
 ```
 
 ---
 
-## CI/CD Pipeline (Jenkins)
+## CI/CD pipeline (Jenkins)
 
-The Jenkins pipeline is defined in `Jenkinsfile` and includes these stages:
+Defined in [`Jenkinsfile`](Jenkinsfile) and triggered automatically by a GitHub push webhook (`githubPush()`).
 
-| Stage        | Description                                      |
-|--------------|--------------------------------------------------|
-| Checkout     | Pull latest code from GitHub on push/poll trigger |
-| Build        | `mvn clean package -DskipTests` + archive JAR    |
-| Test         | `mvn test` + publish JUnit XML results (22 tests) |
-| Docker Build | Build multi-stage Alpine image tagged with build #|
-| Push         | Authenticate with Docker Hub (`dockerhub-creds`) |
-| Deploy       | `docker compose up -d` + Actuator health verify  |
+| Stage        | What it does                                                                 |
+|--------------|------------------------------------------------------------------------------|
+| Checkout     | `checkout scm`, pulls the commit that triggered the build                    |
+| Build        | `mvn clean package -DskipTests -B`                                           |
+| Test         | `mvn test -B`; JUnit results published; a failing test fails the build       |
+| Docker Build | Builds the image tagged `harsh9163/calculator-api:<BUILD_NUMBER>` and `:latest` |
+| Push         | `docker login` with the `dockerhub-creds` credential, then pushes both tags  |
+| Deploy       | `docker-compose up -d --force-recreate`, then `scripts/smoke_test.py`        |
+| post         | Email on success or failure; `docker logout`                                 |
+
+Re-running the pipeline is safe: Deploy recreates the same Compose project instead of starting a second stack.
+
+### Jenkins setup
+1. **Job:** a Pipeline job named `calculator-devops-pipeline`, *Pipeline script from SCM*, this repository, branch `main`, script path `Jenkinsfile`. Run it once manually so Jenkins registers the trigger.
+2. **Credential:** Manage Jenkins → Credentials → (global) → *Username with password*:
+   - ID `dockerhub-creds` (exactly)
+   - Username: your Docker Hub username (`harsh9163`), with no leading or trailing space
+   - Password: a Docker Hub **access token** with Read & Write permission
+3. **Webhook:** GitHub repo → Settings → Webhooks → payload URL `https://<public-url>/github-webhook/`, content type `application/json`, event *Just the push event*. GitHub cannot reach `localhost`, so Jenkins needs a public tunnel URL.
+4. **Email:** configure SMTP under Manage Jenkins → System (E-mail Notification) and set *System Admin e-mail address* under Jenkins Location. Jenkins also uses the notification address set in `NOTIFY_EMAIL` in the Jenkinsfile.
+5. **Windows host:** Jenkins runs as a service, so the tools it calls must be reachable:
+   - Add `C:\Program Files\Git\bin` and `C:\Program Files\Git\usr\bin` to the **system** `PATH` (the Jenkinsfile uses `sh` steps through Git Bash), then run `Restart-Service Jenkins`.
+   - The Jenkinsfile's `environment { PATH }` adds Maven, Docker Desktop and Python. Adjust those paths for your machine.
+   - The service account cannot see the user-level `docker compose` plugin, so the Jenkinsfile calls the standalone `docker-compose` binary.
 
 ---
 
-## Deliverables & Documentation
+## Docker and Compose
 
-- **Project Report (PDF):** [`SPE_Mini_Project_Report.pdf`](file:///SPE_Mini_Project_Report.pdf) (Generated via `python scripts/generate_pdf_report.py`)
-- **Report Source (Markdown):** [`REPORT.md`](file:///REPORT.md)
-- **Screenshots Checklist:** [`SCREENSHOTS_GUIDE.md`](file:///SCREENSHOTS_GUIDE.md)
-- **Live Demo Script:** [`DEMO_SCRIPT.md`](file:///DEMO_SCRIPT.md)
-- **Phase Implementation Tracker:** [`PHASE_PLAN.md`](file:///PHASE_PLAN.md)
+- **Dockerfile:** stage 1 `maven:3.9.6-eclipse-temurin-17-alpine` resolves dependencies first (cached layer) and builds the JAR; stage 2 `eclipse-temurin:17-jre-alpine` copies only the JAR, runs as the non-root user `appuser`, declares `EXPOSE 8080` and has a `HEALTHCHECK` on `/actuator/health`. `.dockerignore` excludes `target/`, `.git/` and IDE files.
+- **docker-compose.yml:** `calculator-api` (health check, `restart: unless-stopped`, `SPRING_PROFILES_ACTIVE=prod`, port exposed only inside the network) and `nginx` (the only published port, 80, proxying to the API once it is healthy), both on the `calculator-net` bridge network.
 
 ---
 
-## License
-MIT — For educational purposes (SPE Mini-Project, IIIT Bangalore)
+## Project structure
+
+```
+.
+├── src/
+│   ├── main/java/com/spe/calculator/
+│   │   ├── CalculatorApplication.java
+│   │   ├── controller/CalculatorController.java
+│   │   ├── service/CalculatorService.java
+│   │   ├── dto/{CalculatorResponse,ErrorResponse}.java
+│   │   └── exception/{DivisionByZeroException,GlobalExceptionHandler}.java
+│   ├── main/resources/application.properties
+│   └── test/java/com/spe/calculator/
+│       ├── service/CalculatorServiceTest.java        # 13 JUnit 5 unit tests
+│       └── controller/CalculatorControllerTest.java  # 9 MockMvc integration tests
+├── scripts/
+│   ├── smoke_test.py / smoke_test.sh                 # deployment verification
+│   └── generate_pdf_report.py                        # builds the PDF report
+├── docs/architecture.png                             # pipeline architecture diagram
+├── screenshots/                                      # A1-A6 report screenshots
+├── pom.xml
+├── Dockerfile
+├── .dockerignore
+├── docker-compose.yml
+├── nginx.conf
+├── Jenkinsfile
+├── IMT2023106_Harsh_Mohta.pdf                        # project report
+├── .gitignore
+└── README.md
+```
+
+## Version control
+
+Work was done on feature branches (`feature/spring-boot-api`, `feature/docker-and-compose`, `feature/jenkins-and-pipeline-deliverables`) and merged into `main` through pull requests #1 to #3. `.gitignore` excludes `target/`, IDE files and secrets. No credentials are in the repository; the Docker Hub token lives only in the Jenkins credentials store.
+
+## Regenerating the report
+```bash
+python scripts/generate_pdf_report.py     # writes IMT2023106_Harsh_Mohta.pdf
+```
 

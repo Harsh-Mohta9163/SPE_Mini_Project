@@ -1,6 +1,3 @@
-# ============================================================
-# Stage 1: Build Application (Maven + JDK 17)
-# ============================================================
 FROM maven:3.9.6-eclipse-temurin-17-alpine AS builder
 
 WORKDIR /build
@@ -15,9 +12,7 @@ COPY src ./src
 # Compile and package application (skip tests as CI runs them separately)
 RUN mvn clean package -DskipTests -B
 
-# ============================================================
-# Stage 2: Production Runtime (Minimal Temurin JRE 17 Alpine)
-# ============================================================
+
 FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app

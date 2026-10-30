@@ -1,536 +1,295 @@
 #!/usr/bin/env python3
-"""
-Publication-Quality Academic PDF Report Generator for SPE Mini-Project
-Course: CSE 816 (Software Production Engineering), IIIT Bangalore
-Author: Harsh Mohta
-Target: Exactly 3 Pages PDF Report conforming to Evaluation Rubric
-"""
+"""Generates IMT2023106_Harsh_Mohta.pdf (CSE 816 mini-project report).
 
+Structure: title block, 1 Overview, 2 Pipeline architecture, 3 Application,
+4 Pipeline stages, 5 Containerization and deployment, 6 Version control,
+7 Challenges faced, Appendix: Screenshots.
+
+Run from the repository root:  python scripts/generate_pdf_report.py
+"""
 import os
-import sys
-from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether, Preformatted
-)
-from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.graphics.shapes import Drawing, Line, Polygon, Rect, String
+from reportlab.platypus import (Image, KeepTogether, PageBreak, Paragraph, SimpleDocTemplate,
+                                Spacer, Table, TableStyle)
 
-class NumberedCanvas(canvas.Canvas):
-    """Two-pass canvas to dynamically compute and draw 'Page X of Y' on all pages."""
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._saved_page_states = []
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SHOTS = os.path.join(ROOT, "screenshots")
+OUT = os.path.join(ROOT, "IMT2023106_Harsh_Mohta.pdf")
 
-    def showPage(self):
-        self._saved_page_states.append(dict(self.__dict__))
-        self._startPage()
+NAME = "Harsh Mohta"
+ROLL = "IMT2023106"
+DATE = "30 October 2026"
+REPO = "https://github.com/Harsh-Mohta9163/SPE_Mini_Project"
+HUB = "https://hub.docker.com/r/harsh9163/calculator-api"
 
-    def save(self):
-        num_pages = len(self._saved_page_states)
-        for state in self._saved_page_states:
-            self.__dict__.update(state)
-            self.draw_page_decorations(num_pages)
-            super().showPage()
-        super().save()
+BLUE = colors.HexColor("#1F4E79")
+GREY = colors.HexColor("#555555")
+LIGHT = colors.HexColor("#E8EEF5")
 
-    def draw_page_decorations(self, page_count):
-        self.saveState()
-        self.setFont("Helvetica", 8)
-        self.setFillColor(colors.HexColor("#64748B"))
-        
-        # Header (pages > 1)
-        if self._pageNumber > 1:
-            self.drawString(36, A4[1] - 25, "CSE 816: Software Production Engineering — Mini-Project Report")
-            self.drawRightString(A4[0] - 36, A4[1] - 25, "Harsh Mohta (IIIT Bangalore)")
-            self.setStrokeColor(colors.HexColor("#CBD5E1"))
-            self.setLineWidth(0.5)
-            self.line(36, A4[1] - 28, A4[0] - 36, A4[1] - 28)
-
-        # Footer (all pages)
-        self.setStrokeColor(colors.HexColor("#CBD5E1"))
-        self.setLineWidth(0.5)
-        self.line(36, 32, A4[0] - 36, 32)
-        
-        self.drawString(36, 20, "IIIT Bangalore &bull; Calculator REST API CI/CD Pipeline &bull; Faculty: Prof. B. Thangaraju")
-        self.drawRightString(A4[0] - 36, 20, f"Page {self._pageNumber} of {page_count}")
-        self.restoreState()
+ss = getSampleStyleSheet()
+body = ParagraphStyle("body", parent=ss["BodyText"], fontName="Helvetica", fontSize=9, leading=12)
+title = ParagraphStyle("title", parent=body, fontName="Helvetica-Bold", fontSize=17, leading=21,
+                       alignment=1, textColor=BLUE)
+meta = ParagraphStyle("meta", parent=body, fontSize=8.5, leading=11, alignment=1, textColor=GREY)
+h1 = ParagraphStyle("h1", parent=body, fontName="Helvetica-Bold", fontSize=12, leading=15,
+                    textColor=BLUE, spaceBefore=8, spaceAfter=3)
+cell = ParagraphStyle("cell", parent=body, fontSize=8, leading=10)
+cellb = ParagraphStyle("cellb", parent=cell, fontName="Helvetica-Bold")
+code = ParagraphStyle("code", parent=cell, fontName="Courier", fontSize=7.5)
+cap = ParagraphStyle("cap", parent=body, fontSize=8.5, leading=11, alignment=1, textColor=GREY,
+                     spaceBefore=2, spaceAfter=8)
 
 
-def build_pdf(filename="SPE_Mini_Project_Report.pdf"):
-    doc = SimpleDocTemplate(
-        filename,
-        pagesize=A4,
-        leftMargin=36,
-        rightMargin=36,
-        topMargin=36,
-        bottomMargin=38
-    )
+def P(t, s=cell):
+    return Paragraph(t, s)
 
-    styles = getSampleStyleSheet()
-    
-    # Custom styles
-    inst_style = ParagraphStyle(
-        'InstStyle',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=9,
-        leading=11,
-        textColor=colors.HexColor('#1E3A8A'),
-        textTransform='uppercase'
-    )
 
-    course_style = ParagraphStyle(
-        'CourseStyle',
-        parent=styles['Normal'],
-        fontName='Helvetica',
-        fontSize=8,
-        leading=10,
-        textColor=colors.HexColor('#475569')
-    )
+def table(rows, widths, header=True):
+    data = [[P(c, cellb if (header and i == 0) else cell) if isinstance(c, str) else c for c in r]
+            for i, r in enumerate(rows)]
+    t = Table(data, colWidths=widths, repeatRows=1 if header else 0)
+    st = [("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#B8C4D2")),
+          ("VALIGN", (0, 0), (-1, -1), "TOP"),
+          ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+          ("TOPPADDING", (0, 0), (-1, -1), 2.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5)]
+    if header:
+        st.append(("BACKGROUND", (0, 0), (-1, 0), LIGHT))
+    t.setStyle(TableStyle(st))
+    return t
 
-    title_style = ParagraphStyle(
-        'DocTitle',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=14,
-        leading=17,
-        textColor=colors.HexColor('#0F172A'),
-        spaceAfter=4
-    )
 
-    meta_style = ParagraphStyle(
-        'MetaStyle',
-        parent=styles['Normal'],
-        fontName='Helvetica',
-        fontSize=7.5,
-        leading=9.5,
-        textColor=colors.HexColor('#1E293B')
-    )
+def box(d, x, y, w, h, line1, line2="", fill=colors.white, stroke=colors.HexColor("#444444")):
+    d.add(Rect(x, y, w, h, rx=4, ry=4, fillColor=fill, strokeColor=stroke, strokeWidth=0.8))
+    if line2:
+        d.add(String(x + w / 2, y + h - 12, line1, textAnchor="middle", fontName="Helvetica-Bold", fontSize=7.5))
+        d.add(String(x + w / 2, y + 6, line2, textAnchor="middle", fontName="Helvetica", fontSize=6.5,
+                     fillColor=GREY))
+    else:
+        d.add(String(x + w / 2, y + h / 2 - 3, line1, textAnchor="middle", fontName="Helvetica-Bold", fontSize=7.5))
 
-    h1_style = ParagraphStyle(
-        'SecHeading',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=10,
-        leading=12,
-        textColor=colors.HexColor('#1E3A8A'),
-        spaceBefore=5,
-        spaceAfter=3,
-        keepWithNext=True
-    )
 
-    body_style = ParagraphStyle(
-        'Body',
-        parent=styles['Normal'],
-        fontName='Helvetica',
-        fontSize=7.8,
-        leading=10,
-        textColor=colors.HexColor('#1F2937'),
-        alignment=4,  # Justified
-        spaceAfter=3
-    )
+def arrow(d, x1, y1, x2, y2, label="", lx=None, ly=None):
+    d.add(Line(x1, y1, x2, y2, strokeColor=colors.HexColor("#444444"), strokeWidth=0.8))
+    # arrow head
+    import math
+    a = math.atan2(y2 - y1, x2 - x1)
+    s = 4.5
+    d.add(Polygon([x2, y2, x2 - s * math.cos(a - 0.4), y2 - s * math.sin(a - 0.4),
+                   x2 - s * math.cos(a + 0.4), y2 - s * math.sin(a + 0.4)],
+                  fillColor=colors.HexColor("#444444"), strokeColor=colors.HexColor("#444444")))
+    if label:
+        d.add(String(lx if lx is not None else (x1 + x2) / 2, ly if ly is not None else (y1 + y2) / 2 + 3,
+                     label, textAnchor="middle", fontName="Helvetica-Oblique", fontSize=6.5, fillColor=GREY))
 
-    code_style = ParagraphStyle(
-        'CodeStyle',
-        parent=styles['Normal'],
-        fontName='Courier',
-        fontSize=6.5,
-        leading=8,
-        textColor=colors.HexColor('#F8FAFC')
-    )
 
-    table_header_style = ParagraphStyle(
-        'TableHeader',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=7.5,
-        leading=9,
-        textColor=colors.HexColor('#0F172A')
-    )
+def architecture():
+    d = Drawing(500, 215)
+    box(d, 5, 175, 105, 32, "Developer", "feature branch + PR")
+    box(d, 190, 175, 105, 32, "GitHub", "SPE_Mini_Project repo")
+    box(d, 385, 175, 110, 32, "Public tunnel", "webhook URL for Jenkins")
+    arrow(d, 110, 191, 190, 191, "git push / merge")
+    arrow(d, 295, 191, 385, 191, "webhook")
+    # Jenkins container
+    d.add(Rect(5, 80, 490, 78, rx=5, ry=5, fillColor=LIGHT, strokeColor=BLUE, strokeWidth=1))
+    d.add(String(12, 147, "Jenkins (Windows service): declarative Jenkinsfile, trigger: githubPush()",
+                 fontName="Helvetica-Bold", fontSize=7.5, fillColor=BLUE))
+    stages = [("Checkout", "checkout scm"), ("Build", "mvn package"), ("Test", "mvn test + junit"),
+              ("Docker Build", "tag :BUILD_NUMBER"), ("Push", "Docker Hub login"), ("Deploy", "compose up -d")]
+    x = 12
+    for n, sub in stages:
+        box(d, x, 100, 72, 34, n, sub)
+        x += 79
+    d.add(String(12, 86, "post { success / failure }  ->  mail", fontName="Helvetica", fontSize=7, fillColor=GREY))
+    arrow(d, 440, 175, 440, 158)
+    # bottom row
+    box(d, 5, 5, 105, 38, "Email notification", "SMTP: SUCCESS / FAILED #N")
+    box(d, 175, 5, 115, 38, "Docker Hub", "harsh9163/calculator-api")
+    d.add(Rect(325, 2, 170, 48, rx=5, ry=5, fillColor=colors.HexColor("#E6F4E6"),
+               strokeColor=colors.HexColor("#3A7D3A"), strokeWidth=0.8))
+    d.add(String(331, 40, "Compose stack (network calculator-net)", fontName="Helvetica-Bold", fontSize=6.5,
+                 fillColor=colors.HexColor("#2C5F2C")))
+    box(d, 333, 6, 70, 28, "nginx", "host :80")
+    box(d, 415, 6, 72, 28, "calculator-api", ":8080 health")
+    arrow(d, 40, 80, 40, 43, "on result", 58, 58)
+    arrow(d, 232, 80, 232, 43, "push image", 262, 58)
+    arrow(d, 410, 80, 410, 50, "deploy :N", 436, 62)
+    return d
 
-    table_cell_style = ParagraphStyle(
-        'TableCell',
-        parent=styles['Normal'],
-        fontName='Helvetica',
-        fontSize=7,
-        leading=8.5,
-        textColor=colors.HexColor('#1E293B')
-    )
 
-    table_cell_bold = ParagraphStyle(
-        'TableCellBold',
-        parent=styles['Normal'],
-        fontName='Helvetica-Bold',
-        fontSize=7,
-        leading=8.5,
-        textColor=colors.HexColor('#0F172A')
-    )
+# Fraction of each screenshot's height to keep (trims blank terminal area; originals untouched).
+CROP = {"A2_docker_ps_healthy.png": 0.25, "A3_api_responses_curl.png": 0.78}
 
-    story = []
 
-    # ==========================================
-    # PAGE 1: Header, Architecture & Stages 1-3
-    # ==========================================
-    story.append(Paragraph("International Institute of Information Technology Bangalore (IIIT-B)", inst_style))
-    story.append(Paragraph("CSE 816: Software Production Engineering &bull; Term I, 2026-27 &bull; Faculty: Prof. B. Thangaraju", course_style))
-    story.append(Spacer(1, 2))
-    story.append(Paragraph("End-to-End CI/CD Pipeline for a Calculator REST API", title_style))
-    
-    # Metadata Box
-    meta_data = [
-        [
-            Paragraph("<b>Student:</b> Harsh Mohta (mohta.harsh9163@gmail.com)", meta_style),
-            Paragraph("<b>GitHub:</b> github.com/Harsh-Mohta9163/SPE_Mini_Project", meta_style)
-        ],
-        [
-            Paragraph("<b>Tech Stack:</b> Java 17, Spring Boot 3.3.4, Maven, Jenkins, Docker", meta_style),
-            Paragraph("<b>Docker Hub:</b> hub.docker.com/r/harshmohta9163/calculator-api", meta_style)
-        ]
-    ]
-    t_meta = Table(meta_data, colWidths=[260, 263])
-    t_meta.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#F8FAFC')),
-        ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#E2E8F0')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#F1F5F9')),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
-        ('LEFTPADDING', (0,0), (-1,-1), 6),
-        ('RIGHTPADDING', (0,0), (-1,-1), 6),
-    ]))
-    story.append(t_meta)
-    story.append(Spacer(1, 3))
+def fit_image(path, max_w, max_h):
+    from io import BytesIO
+    from PIL import Image as PILImage
+    im = PILImage.open(path).convert("RGB")
+    keep = CROP.get(os.path.basename(path))
+    if keep:
+        im = im.crop((0, 0, im.width, int(im.height * keep)))
+    buf = BytesIO()
+    im.save(buf, "PNG")
+    buf.seek(0)
+    k = min(max_w / im.width, max_h / im.height)
+    return Image(buf, width=im.width * k, height=im.height * k)
 
-    # 1. Executive Summary
-    story.append(Paragraph("1. Executive Summary & Objective", h1_style))
-    story.append(Paragraph(
-        "Modern DevOps practices eliminate friction between application development and production deployment through automated Continuous Integration and Continuous Delivery (CI/CD) pipelines. In this mini-project, an end-to-end automated pipeline is engineered for a Spring Boot 3.3.4 Calculator REST API running on Java 17. The pipeline orchestrates Git/GitHub source management, automated Maven compilation, comprehensive JUnit 5 and MockMvc test reporting, hardened multi-stage Docker containerization, authenticated image publishing to Docker Hub, and idempotent multi-container deployment using Docker Compose fronted by an Nginx reverse proxy.",
-        body_style
-    ))
 
-    # 2. End-to-End System Architecture
-    story.append(Paragraph("2. End-to-End System Architecture & Workflow", h1_style))
-    arch_ascii = (
-        "[Developer Push]  ──>  [GitHub Repository: Harsh-Mohta9163/SPE_Mini_Project]\n"
-        "                                │  Webhook / SCM Polling Trigger (every 5 min)\n"
-        "                                ▼\n"
-        "                [Jenkins Declarative Pipeline Agent]\n"
-        "┌─────────────────────────────────────────────────────────────────────────────┐\n"
-        "│ [Stage 1: Checkout] ──> [Stage 2: Build] ──> [Stage 3: Test (JUnit 5)]      │\n"
-        "│ [Stage 4: Docker Build] ──> [Stage 5: Push] ──> [Stage 6: Compose Deploy]   │\n"
-        "└──────────────────────────────────────┬──────────────────────────────────────┘\n"
-        "                                       │ Docker Compose Bridge Network\n"
-        "                                       ▼\n"
-        "┌─────────────────────────────────────────────────────────────────────────────┐\n"
-        "│ [Nginx Reverse Proxy: Port 80]  ──proxy_pass──>  [Calculator API: Port 8080]│\n"
-        "│ Gateway Routing & Client Forwarding               Spring Boot 3.3.4, JRE 17 │\n"
-        "│ Health Check Condition: service_healthy           Non-root user (appuser)   │\n"
-        "└─────────────────────────────────────────────────────────────────────────────┘\n"
-        "          ▲\n"
-        "          │ Client HTTP Requests: /api/v1/add, /subtract, /multiply, /divide, /health\n"
-        "   [End Users / curl]"
-    )
-    t_arch = Table([[Paragraph(f"<font face='Courier' size='5.8'>{arch_ascii.replace(chr(10), '<br/>').replace(' ', '&nbsp;')}</font>", code_style)]], colWidths=[523])
-    t_arch.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#0F172A')),
-        ('TOPPADDING', (0,0), (-1,-1), 4),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-        ('LEFTPADDING', (0,0), (-1,-1), 6),
-        ('RIGHTPADDING', (0,0), (-1,-1), 6),
-    ]))
-    story.append(t_arch)
-    story.append(Spacer(1, 3))
+def shot(fname, caption, max_h=215 * mm / 1.0):
+    p = os.path.join(SHOTS, fname)
+    return KeepTogether([fit_image(p, 170 * mm, max_h), Paragraph(caption, cap)])
 
-    # 3. Pipeline Stages (Part 1: Stages 1-3)
-    story.append(Paragraph("3. Jenkins CI/CD Declarative Pipeline Stages", h1_style))
-    p_stages1 = [
-        [
-            Paragraph("<b>Stage 1: Checkout</b>", table_cell_bold),
-            Paragraph("Triggered via GitHub webhook (<code>githubPush()</code>) or polling (<code>pollSCM('H/5 * * * *')</code>). Clones repository, extracts Git SHA, author, and commit message, and establishes clean workspace.", table_cell_style)
-        ],
-        [
-            Paragraph("<b>Stage 2: Build</b>", table_cell_bold),
-            Paragraph("Executes <code>mvn clean package -DskipTests -B</code> to compile Java 17 bytecode and package executable fat-JAR (<code>calculator-1.0.0.jar</code>). JAR artifact is fingerprinted and archived via <code>archiveArtifacts</code>.", table_cell_style)
-        ],
-        [
-            Paragraph("<b>Stage 3: Test</b>", table_cell_bold),
-            Paragraph("Executes <code>mvn test -B</code> across 13 <code>CalculatorServiceTest</code> unit tests and 9 <code>CalculatorControllerTest</code> MockMvc integration tests (22 total). Publishes Surefire XML reports via Jenkins JUnit plugin; fails build on any error.", table_cell_style)
-        ]
-    ]
-    t_stages1 = Table(p_stages1, colWidths=[110, 413])
-    t_stages1.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#FFFFFF')),
-        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-        ('TOPPADDING', (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-        ('LEFTPADDING', (0,0), (-1,-1), 5),
-        ('RIGHTPADDING', (0,0), (-1,-1), 5),
-    ]))
-    story.append(t_stages1)
 
-    # ==========================================
-    # PAGE 2: Stages 4-6, Compose & Challenges
-    # ==========================================
-    story.append(PageBreak())
+def footer(c, doc):
+    c.saveState()
+    c.setFont("Helvetica", 7.5)
+    c.setFillColor(GREY)
+    c.line(18 * mm, 13 * mm, A4[0] - 18 * mm, 13 * mm)
+    c.drawString(18 * mm, 9 * mm, "CSE 816 Software Production Engineering - Mini-Project")
+    c.drawRightString(A4[0] - 18 * mm, 9 * mm, "Page %d" % doc.page)
+    c.restoreState()
 
-    story.append(Paragraph("3. Jenkins CI/CD Pipeline Stages (Continued)", h1_style))
-    p_stages2 = [
-        [
-            Paragraph("<b>Stage 4: Docker Build</b>", table_cell_bold),
-            Paragraph("Builds multi-stage Dockerfile: builder stage (<code>maven:3.9.6-eclipse-temurin-17-alpine</code>) leverages dependency layer caching; runtime stage (<code>eclipse-temurin:17-jre-alpine</code>) creates minimal ~180MB image. Configures non-root user <code>appuser:appgroup</code>. Dual tags: <code>${BUILD_NUMBER}</code> and <code>:latest</code>.", table_cell_style)
-        ],
-        [
-            Paragraph("<b>Stage 5: Push</b>", table_cell_bold),
-            Paragraph("Securely authenticates to Docker Hub using Jenkins Credential Store (<code>dockerhub-creds</code>) via <code>withCredentials</code> and stdin streaming. Pushes immutable <code>${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}</code> and <code>:latest</code> tags, executing immediate <code>docker logout</code>.", table_cell_style)
-        ],
-        [
-            Paragraph("<b>Stage 6: Deploy</b>", table_cell_bold),
-            Paragraph("Performs idempotent deployment: <code>docker compose down --remove-orphans && docker compose up -d --force-recreate</code>. Actively polls Actuator health probe (<code>http://localhost/actuator/health</code>) until <code>\"status\":\"UP\"</code>. Performs automated smoke calculation (<code>/api/v1/add?a=10&b=20</code>) via Nginx proxy.", table_cell_style)
-        ],
-        [
-            Paragraph("<b>Post-Actions</b>", table_cell_bold),
-            Paragraph("<b>Success:</b> Dispatches formatted HTML notification email to <code>mohta.harsh9163@gmail.com</code> with build metrics.<br/><b>Failure:</b> Dumps diagnostic container logs (last 50 lines) and alerts student.<br/><b>Always:</b> Executes <code>docker image prune -f</code> to reclaim disk space.", table_cell_style)
-        ]
-    ]
-    t_stages2 = Table(p_stages2, colWidths=[110, 413])
-    t_stages2.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#FFFFFF')),
-        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-        ('TOPPADDING', (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-        ('LEFTPADDING', (0,0), (-1,-1), 5),
-        ('RIGHTPADDING', (0,0), (-1,-1), 5),
-    ]))
-    story.append(t_stages2)
-    story.append(Spacer(1, 4))
 
-    # 4. Multi-Container Orchestration Design
-    story.append(Paragraph("4. Multi-Container Orchestration Design (Docker Compose & Nginx)", h1_style))
-    story.append(Paragraph(
-        "The application architecture isolates the backend service within a dedicated bridge network (<code>calculator-net</code>), exposing only the Nginx reverse proxy to external traffic on host port 80. This enforces defense-in-depth and eliminates direct attack surface against the application container.",
-        body_style
-    ))
-    compose_table = [
-        [
-            Paragraph("Container Service", table_header_style),
-            Paragraph("Configuration Directives", table_header_style),
-            Paragraph("Architectural & Security Role", table_header_style)
-        ],
-        [
-            Paragraph("<b>calculator-api</b><br/><code>harshmohta9163/calculator-api:latest</code>", table_cell_style),
-            Paragraph("• Port: <code>8080</code> (Internal only, not published to host)<br/>• Security: Non-root user <code>appuser</code> (UID 10001)<br/>• Healthcheck: <code>curl /actuator/health</code> (interval 15s, start_period 30s)", table_cell_style),
-            Paragraph("Executes core arithmetic microservice. Completely inaccessible from host network; strictly routable only via Nginx reverse proxy across private bridge.", table_cell_style)
-        ],
-        [
-            Paragraph("<b>nginx</b><br/><code>nginx:alpine</code>", table_cell_style),
-            Paragraph("• Port: <code>80:80</code> (Public entry point)<br/>• Reverse Proxy: <code>proxy_pass http://calculator-api:8080</code><br/>• Dependency: <code>condition: service_healthy</code>", table_cell_style),
-            Paragraph("Acts as production gateway. Forwards client headers (<code>X-Real-IP</code>, <code>X-Forwarded-Proto</code>). Defers startup until API health check passes, preventing 502 Bad Gateways.", table_cell_style)
-        ]
-    ]
-    t_compose = Table(compose_table, colWidths=[120, 203, 200])
-    t_compose.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F1F5F9')),
-        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-        ('TOPPADDING', (0,0), (-1,-1), 2.5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
-        ('LEFTPADDING', (0,0), (-1,-1), 5),
-        ('RIGHTPADDING', (0,0), (-1,-1), 5),
-    ]))
-    story.append(t_compose)
-    story.append(Spacer(1, 4))
+def build():
+    doc = SimpleDocTemplate(OUT, pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
+                            topMargin=14 * mm, bottomMargin=18 * mm,
+                            title="End-to-End CI/CD Pipeline for a Calculator REST API", author=NAME)
+    W = A4[0] - 36 * mm
+    s = []
 
-    # 5. Technical Challenges & Solutions
-    story.append(Paragraph("5. Technical Challenges Faced & Engineering Solutions Implemented", h1_style))
-    challenges_table = [
-        [
-            Paragraph("#", table_header_style),
-            Paragraph("Challenge Encountered", table_header_style),
-            Paragraph("Root Cause Analysis", table_header_style),
-            Paragraph("Engineering Solution Implemented", table_header_style)
-        ],
-        [
-            Paragraph("<b>1</b>", table_cell_style),
-            Paragraph("Java compile error (<code>\\ufeff</code> illegal char)", table_cell_bold),
-            Paragraph("Windows editors injected UTF-8 Byte Order Marks (BOM) into source files, breaking javac.", table_cell_style),
-            Paragraph("Created Python automated sanitization routine to strip BOM bytes across all <code>.java</code> files.", table_cell_style)
-        ],
-        [
-            Paragraph("<b>2</b>", table_cell_style),
-            Paragraph("Premature health check container failure", table_cell_bold),
-            Paragraph("Spring Boot JVM warm-up requires 15–20s; initial Docker health probes failed immediately.", table_cell_style),
-            Paragraph("Configured <code>start_period: 30s</code>, <code>interval: 15s</code>, and <code>retries: 3</code> in Dockerfile & Compose.", table_cell_style)
-        ],
-        [
-            Paragraph("<b>3</b>", table_cell_style),
-            Paragraph("Non-root permission denied on launch", table_cell_bold),
-            Paragraph("Running container as <code>appuser</code> failed as JAR files were owned by root during multi-stage copy.", table_cell_style),
-            Paragraph("Added explicit user/group creation and recursive <code>RUN chown -R appuser:appgroup /app</code>.", table_cell_style)
-        ],
-        [
-            Paragraph("<b>4</b>", table_cell_style),
-            Paragraph("Pipeline idempotency & container collisions", table_cell_bold),
-            Paragraph("Subsequent Jenkins builds crashed due to container name collisions and lingering networks.", table_cell_style),
-            Paragraph("Implemented <code>docker compose down --remove-orphans && docker compose up -d --force-recreate</code>.", table_cell_style)
-        ],
-        [
-            Paragraph("<b>5</b>", table_cell_style),
-            Paragraph("Secure Docker Hub credential isolation", table_cell_bold),
-            Paragraph("Hardcoding credentials in repository Jenkinsfile exposes secrets and triggers audit violations.", table_cell_style),
-            Paragraph("Integrated Jenkins Credentials Store (<code>dockerhub-creds</code>) with masked stdin login.", table_cell_style)
-        ]
-    ]
-    t_challenges = Table(challenges_table, colWidths=[15, 125, 185, 198])
-    t_challenges.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F1F5F9')),
-        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-        ('TOPPADDING', (0,0), (-1,-1), 2.5),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
-        ('LEFTPADDING', (0,0), (-1,-1), 4),
-        ('RIGHTPADDING', (0,0), (-1,-1), 4),
-    ]))
-    story.append(t_challenges)
+    s += [Paragraph("End-to-End CI/CD Pipeline for a Calculator REST API", title),
+          Paragraph("CSE 816 Software Production Engineering - Mini-Project &nbsp;|&nbsp; %s (%s) &nbsp;|&nbsp; %s"
+                    % (NAME, ROLL, DATE), meta),
+          Paragraph("Repository: <link href='%s' color='#1F4E79'>%s</link> &nbsp;|&nbsp; Image: "
+                    "<link href='%s' color='#1F4E79'>%s</link>" % (REPO, REPO, HUB, HUB), meta)]
 
-    # ==========================================
-    # PAGE 3: Verification, Rubric & Capstone
-    # ==========================================
-    story.append(PageBreak())
+    s += [Paragraph("1. Overview", h1),
+          Paragraph("A Spring Boot 3.3.4 (Java 17, Maven) REST service performs add, subtract, multiply and divide and "
+                    "returns JSON. Every push to <b>main</b> on GitHub triggers a declarative Jenkins pipeline through a "
+                    "webhook. The pipeline builds and tests the code, builds a multi-stage Docker image tagged with the "
+                    "Jenkins build number, pushes it to Docker Hub and deploys it with Docker Compose behind an Nginx "
+                    "reverse proxy, then verifies the deployment with a smoke test against the health endpoint. An email "
+                    "reports success or failure. A code change reaches a running, health-checked deployment with no manual "
+                    "steps (build #7 took 1 min 24 s end to end).", body)]
 
-    story.append(Paragraph("6. Automated Testing & Quality Assurance Verification", h1_style))
-    story.append(Paragraph(
-        "The test suite consists of 22 automated test cases executed via Maven Surefire during Stage 3. Unit tests achieve complete branch coverage over arithmetic operations and custom exceptions, while integration tests validate HTTP contracts, status codes, and Actuator probes.",
-        body_style
-    ))
-    test_table = [
-        [
-            Paragraph("Endpoint / Operation", table_header_style),
-            Paragraph("HTTP", table_header_style),
-            Paragraph("Verified Response Payload & Behavior", table_header_style)
-        ],
-        [
-            Paragraph("<code>GET /api/v1/add?a=10&b=20</code>", table_cell_style),
-            Paragraph("200 OK", table_cell_style),
-            Paragraph("<code>{\"operation\":\"add\",\"a\":10.0,\"b\":20.0,\"result\":30.0}</code>", table_cell_style)
-        ],
-        [
-            Paragraph("<code>GET /api/v1/subtract?a=45&b=15</code>", table_cell_style),
-            Paragraph("200 OK", table_cell_style),
-            Paragraph("<code>{\"operation\":\"subtract\",\"a\":45.0,\"b\":15.0,\"result\":30.0}</code>", table_cell_style)
-        ],
-        [
-            Paragraph("<code>GET /api/v1/multiply?a=6&b=7</code>", table_cell_style),
-            Paragraph("200 OK", table_cell_style),
-            Paragraph("<code>{\"operation\":\"multiply\",\"a\":6.0,\"b\":7.0,\"result\":42.0}</code>", table_cell_style)
-        ],
-        [
-            Paragraph("<code>GET /api/v1/divide?a=100&b=4</code>", table_cell_style),
-            Paragraph("200 OK", table_cell_style),
-            Paragraph("<code>{\"operation\":\"divide\",\"a\":100.0,\"b\":4.0,\"result\":25.0}</code>", table_cell_style)
-        ],
-        [
-            Paragraph("<code>GET /api/v1/divide?a=10&b=0</code>", table_cell_style),
-            Paragraph("400 Bad", table_cell_style),
-            Paragraph("<code>{\"error\":\"Division by zero is not allowed\",\"a\":10.0,\"b\":0.0}</code>", table_cell_style)
-        ],
-        [
-            Paragraph("<code>GET /actuator/health</code>", table_cell_style),
-            Paragraph("200 OK", table_cell_style),
-            Paragraph("<code>{\"status\":\"UP\"}</code> (Spring Boot Actuator container health probe)", table_cell_style)
-        ]
-    ]
-    t_test = Table(test_table, colWidths=[160, 45, 318])
-    t_test.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F1F5F9')),
-        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
-        ('LEFTPADDING', (0,0), (-1,-1), 4),
-        ('RIGHTPADDING', (0,0), (-1,-1), 4),
-    ]))
-    story.append(t_test)
-    story.append(Spacer(1, 4))
+    s += [Paragraph("2. Pipeline architecture", h1), architecture(),
+          Paragraph("Figure 1: Flow from a developer push to a health-checked deployment. Shaded green: containers "
+                    "started by the Deploy stage.", cap)]
 
-    # 7. Deliverables & Evaluation Rubric Compliance Checklist
-    story.append(Paragraph("7. Evaluation Rubric Compliance & Deliverables Checklist (10 Marks)", h1_style))
-    rubric_table = [
-        [
-            Paragraph("Evaluation Rubric Criterion", table_header_style),
-            Paragraph("Marks", table_header_style),
-            Paragraph("Implementation Evidence in Repository", table_header_style),
-            Paragraph("Status", table_header_style)
-        ],
-        [
-            Paragraph("<b>Spring Boot API + Tests</b>", table_cell_style),
-            Paragraph("2.0", table_cell_style),
-            Paragraph("4 REST endpoints, structured error handling, 22 JUnit 5 + MockMvc tests passing.", table_cell_style),
-            Paragraph("<font color='#16A34A'><b>100% Verified</b></font>", table_cell_style)
-        ],
-        [
-            Paragraph("<b>Git / GitHub Practices</b>", table_cell_style),
-            Paragraph("1.0", table_cell_style),
-            Paragraph("Progressive commit history, feature branching (PR #1, PR #2, PR #3), clean .gitignore, 0 secrets.", table_cell_style),
-            Paragraph("<font color='#16A34A'><b>100% Verified</b></font>", table_cell_style)
-        ],
-        [
-            Paragraph("<b>Jenkins CI/CD Pipeline</b>", table_cell_style),
-            Paragraph("3.0", table_cell_style),
-            Paragraph("Declarative 6-stage Jenkinsfile, auto-triggers, JUnit XML publishing, Docker Hub push, email alerts.", table_cell_style),
-            Paragraph("<font color='#16A34A'><b>100% Verified</b></font>", table_cell_style)
-        ],
-        [
-            Paragraph("<b>Dockerfile (Multi-stage)</b>", table_cell_style),
-            Paragraph("1.5", table_cell_style),
-            Paragraph("Multi-stage Temurin JRE 17 Alpine, non-root user appuser, layer caching, .dockerignore.", table_cell_style),
-            Paragraph("<font color='#16A34A'><b>100% Verified</b></font>", table_cell_style)
-        ],
-        [
-            Paragraph("<b>Docker Compose Deployment</b>", table_cell_style),
-            Paragraph("1.5", table_cell_style),
-            Paragraph("Multi-container stack (API + Nginx reverse proxy), health check orchestration, bridge network isolation.", table_cell_style),
-            Paragraph("<font color='#16A34A'><b>100% Verified</b></font>", table_cell_style)
-        ],
-        [
-            Paragraph("<b>Report, Screenshots & Demo</b>", table_cell_style),
-            Paragraph("1.0", table_cell_style),
-            Paragraph("3-page publication PDF report, comprehensive screenshots guide, rehearsed live demo script.", table_cell_style),
-            Paragraph("<font color='#16A34A'><b>100% Verified</b></font>", table_cell_style)
-        ],
-        [
-            Paragraph("<b>Total Score Potential</b>", table_cell_bold),
-            Paragraph("<b>10.0</b>", table_cell_bold),
-            Paragraph("<b>All evaluation requirements satisfied with zero grading deductions.</b>", table_cell_bold),
-            Paragraph("<font color='#16A34A'><b>Ready (10/10)</b></font>", table_cell_bold)
-        ]
-    ]
-    t_rubric = Table(rubric_table, colWidths=[125, 30, 290, 78])
-    t_rubric.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#F1F5F9')),
-        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#ECFDF5')),
-        ('BOX', (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#E2E8F0')),
-        ('TOPPADDING', (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
-        ('LEFTPADDING', (0,0), (-1,-1), 4),
-        ('RIGHTPADDING', (0,0), (-1,-1), 4),
-    ]))
-    story.append(t_rubric)
-    story.append(Spacer(1, 4))
+    s += [Paragraph("3. Application", h1),
+          Paragraph("The code is split into layers: <b>CalculatorController</b> (HTTP only, constructor-injected service), "
+                    "<b>CalculatorService</b> (the arithmetic, no web code), the DTOs <b>CalculatorResponse</b> and "
+                    "<b>ErrorResponse</b> for the JSON shapes, and a <b>GlobalExceptionHandler</b> "
+                    "(<i>@RestControllerAdvice</i>) that maps a custom <b>DivisionByZeroException</b>, missing and "
+                    "mistyped parameters to HTTP 400. Spring Boot Actuator exposes <b>/actuator/health</b>, which "
+                    "Docker Compose and the Deploy stage use.", body), Spacer(1, 4),
+          table([["Request", "Response"],
+                 ["GET /api/v1/add?a=10&amp;b=20", '200 {"operation":"add","a":10.0,"b":20.0,"result":30.0} '
+                  "(subtract, multiply, divide alike)"],
+                 ["GET /api/v1/divide?a=10&amp;b=0", '400 {"error":"Division by zero is not allowed","a":10.0,"b":0.0}'],
+                 ["GET /api/v1/add?a=5", '400 {"error":"Missing required parameter: b", ...}'],
+                 ["GET /api/v1/add?a=abc&amp;b=5", "400 {\"error\":\"Invalid value for parameter 'a': must be a number\", ...}"],
+                 ["GET /actuator/health", '200 {"status":"UP", ...}']],
+                [W * 0.36, W * 0.64]), Spacer(1, 4),
+          Paragraph("<b>Tests (22, all passing):</b> 13 JUnit 5 unit tests for the service, covering every operation "
+                    "plus divide by zero; and 9 Spring MVC integration tests (<i>MockMvc</i>) that send real requests "
+                    "through the controller and exception handler and check status codes and JSON fields. Surefire "
+                    "writes JUnit XML to <i>target/surefire-reports</i>, which Jenkins publishes.", body)]
 
-    # 8. Conclusion & Capstone Project Roadmap
-    story.append(Paragraph("8. Conclusion & Foundation for Capstone Project", h1_style))
-    story.append(Paragraph(
-        "This mini-project successfully validates an end-to-end continuous integration and deployment pipeline engineered according to modern production standards. The declarative Jenkins pipeline establishes a robust automated release loop that eliminates human intervention from commit to live deployment. As designed in the CSE 816 curriculum, this microservice architecture will serve as the core base for the end-of-semester Capstone project, which will expand the system across multi-node clusters using <b>Ansible configuration management</b>, <b>Kubernetes orchestration (Deployments, Ingress, HPA)</b>, and <b>Prometheus + Grafana real-time observability</b>.",
-        body_style
-    ))
+    s += [Paragraph("4. Pipeline stages (Jenkinsfile)", h1),
+          table([["Stage", "What it does", "Key detail"],
+                 ["Checkout", "Fetches the commit that triggered the build.",
+                  "<i>checkout scm</i>; the job uses Pipeline script from SCM, so the pipeline is versioned with the code."],
+                 ["Build", "Compiles and packages the executable JAR.",
+                  "<i>mvn clean package -DskipTests -B</i>; clean gives a fresh build in the reused workspace."],
+                 ["Test", "Runs all tests, publishes results.",
+                  "<i>mvn test -B</i>; a failing test makes Maven exit non-zero, which fails the stage. "
+                  "<i>post { always { junit } }</i> publishes the XML."],
+                 ["Docker Build", "Builds the image from the multi-stage Dockerfile.",
+                  "Tagged <i>harsh9163/calculator-api:${BUILD_NUMBER}</i> and <i>:latest</i>."],
+                 ["Push", "Publishes both tags to Docker Hub.",
+                  "<i>withCredentials</i> reads the access token from the Jenkins Credentials store; "
+                  "<i>--password-stdin</i> keeps it out of the logs."],
+                 ["Deploy", "Starts the new version and verifies it.",
+                  "<i>docker-compose up -d --force-recreate</i>, then <i>scripts/smoke_test.py</i> polls "
+                  "/actuator/health and checks every endpoint through Nginx."],
+                 ["post", "Notifies the developer.",
+                  "<i>mail</i> sends SUCCESS or FAILED with the build number, image tag and console link; "
+                  "<i>docker logout</i> always runs."]],
+                [W * 0.13, W * 0.30, W * 0.57]), Spacer(1, 4),
+          Paragraph("<b>Trigger:</b> <i>githubPush()</i>. GitHub posts to <i>/github-webhook/</i> on a publicly reachable "
+                    "URL, since GitHub cannot reach localhost. Builds show &quot;Started by GitHub push by "
+                    "Harsh-Mohta9163&quot;. <b>Idempotency:</b> <i>docker-compose up -d --force-recreate</i> replaces the "
+                    "containers of the same Compose project each run, so re-running the pipeline never leaves a "
+                    "half-deployed or duplicate stack.", body)]
 
-    # Build document using NumberedCanvas
-    doc.build(story, canvasmaker=NumberedCanvas)
-    print(f"Successfully generated 3-page PDF report: {filename}")
+    s += [Paragraph("5. Containerization and deployment", h1),
+          Paragraph("<b>Dockerfile (multi-stage):</b> stage 1 (<i>maven:3.9.6-eclipse-temurin-17-alpine</i>) copies only "
+                    "<i>pom.xml</i>, runs <i>dependency:go-offline</i>, then copies <i>src</i> and packages. Dependencies "
+                    "form their own cached layer, so a code change rebuilds in seconds. Stage 2 "
+                    "(<i>eclipse-temurin:17-jre-alpine</i>) creates a non-root system user <i>appuser</i>, copies only the "
+                    "JAR, declares <i>EXPOSE 8080</i> and runs as <i>USER appuser</i>, with a <i>HEALTHCHECK</i> on "
+                    "<i>/actuator/health</i>. The final image is about 109 MB compressed on Docker Hub and contains no "
+                    "JDK, Maven or source code. <i>.dockerignore</i> excludes target/, .git/, docs and IDE files.", body),
+          Spacer(1, 3),
+          Paragraph("<b>docker-compose.yml:</b> two services on a user-defined bridge network <i>calculator-net</i>. "
+                    "<i>calculator-api</i> has no published port, only <i>expose: 8080</i>, plus a health check, "
+                    "<i>restart: unless-stopped</i> and environment variables (<i>SPRING_PROFILES_ACTIVE=prod</i>). "
+                    "<i>nginx:alpine</i> is the only public entry point (host 80 to container 80) and reverse-proxies to "
+                    "<i>calculator-api:8080</i> using Docker's service-name DNS. It starts only once the API is healthy "
+                    "(<i>depends_on: condition: service_healthy</i>). One <i>docker compose up</i> starts the whole stack.",
+                    body)]
+
+    s += [Paragraph("6. Version control", h1),
+          Paragraph("Work was done on feature branches (<i>feature/spring-boot-api</i>, <i>feature/docker-and-compose</i>, "
+                    "<i>feature/jenkins-and-pipeline-deliverables</i>) and merged into <i>main</i> through GitHub pull "
+                    "requests #1, #2 and #3, for a history of more than 30 small, descriptive commits. The Java/Maven "
+                    ".gitignore excludes target/ and IDE files. No secrets are in the repository: the Docker Hub access "
+                    "token lives only in the Jenkins Credentials store.", body)]
+
+    s += [Paragraph("7. Challenges faced", h1),
+          table([["Problem", "Root cause", "Resolution"],
+                 ["Push failed: <i>unauthorized: incorrect username or password</i>",
+                  "Docker Hub username is <i>harsh9163</i>, but the credential and image name used <i>harshmohta9163</i>; "
+                  "the stored username also had a leading space.",
+                  "Fixed the image namespace, created a Read &amp; Write access token and re-saved "
+                  "<i>dockerhub-creds</i>; tested with <i>docker login</i> by hand first."],
+                 ["Every build re-downloaded all Maven dependencies (~47 s)",
+                  "<i>docker image prune -f</i> in the post step deleted the cached builder layers after each run.",
+                  "Removed the prune; Docker Build dropped to about 1 s (see A1)."],
+                 ["<i>docker login -p</i> warned that passing the token on the command line is insecure",
+                  "The token was a command-line argument (and <i>echo | docker login</i> in cmd can add a trailing space).",
+                  "Used <i>echo &quot;$DH_PASS&quot; | docker login --password-stdin</i> inside <i>withCredentials</i>."],
+                 ["Port conflict on 8080",
+                  "Jenkins already listens on 8080, the same default port as the Spring Boot app.",
+                  "Only Nginx publishes a host port (80); the API is exposed inside the network only."],
+                 ["Email notification failed with a connection error",
+                  "Jenkins had no SMTP server configured (empty host, default port 25); Gmail also needs SSL and "
+                  "an app password, not the account password.",
+                  "Set <i>smtp.gmail.com</i>, port 465 with SSL and a Gmail app password under Manage Jenkins, "
+                  "System, E-mail Notification; success and failure mails now arrive."]],
+                [W * 0.27, W * 0.38, W * 0.35])]
+
+    s += [PageBreak(), Paragraph("Appendix: Screenshots", h1),
+          shot("A1_jenkins_stage_view_build7.png",
+               "A1. Jenkins Stage View: build #7 green through all stages including Deploy (1 min 24 s).", 90 * mm),
+          shot("A2_docker_ps_healthy.png",
+               "A2. docker ps after the pipeline: calculator-api (healthy) behind calculator-nginx on host port 80.", 60 * mm),
+          shot("A3_api_responses_curl.png",
+               "A3. API responses through Nginx: health, four operations (200) and three error cases (400).", 110 * mm),
+          shot("A4_dockerhub_tags.png",
+               "A4. Docker Hub repository harsh9163/calculator-api with build-number (7) and latest tags.", 100 * mm),
+          shot("A5_email_build7_success.png",
+               "A5. Email notification for a successful build (#7).", 70 * mm),
+          shot("A6_email_build6_failed.png",
+               "A6. Email notification for a failed build (#6, the Deploy stage failure described in section 7).", 40 * mm)]
+
+    doc.build(s, onFirstPage=footer, onLaterPages=footer)
+    print("Wrote", OUT)
+
 
 if __name__ == "__main__":
-    out_file = sys.argv[1] if len(sys.argv) > 1 else "SPE_Mini_Project_Report.pdf"
-    build_pdf(out_file)
+    build()
