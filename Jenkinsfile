@@ -173,7 +173,7 @@ pipeline {
                             sh "docker push ${DOCKER_IMAGE_NAME}:latest"
                             sh 'docker logout'
                         } else {
-                            bat 'echo %DOCKERHUB_PASSWORD% | docker login -u "%DOCKERHUB_USER%" --password-stdin'
+                            bat 'docker login -u "%DOCKERHUB_USER%" -p "%DOCKERHUB_PASSWORD%"'
                             echo "Pushing ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}..."
                             bat "docker push ${DOCKER_IMAGE_NAME}:${DOCKER_TAG}"
                             echo "Pushing ${DOCKER_IMAGE_NAME}:latest..."
