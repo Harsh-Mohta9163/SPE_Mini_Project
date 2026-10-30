@@ -2,7 +2,6 @@ pipeline {
     agent any
 
     options {
-        buildDiscarder(logRotator(numToKeepStr: '10'))
         timestamps()
         timeout(time: 20, unit: 'MINUTES')
         disableConcurrentBuilds()
@@ -13,11 +12,10 @@ pipeline {
     }
 
     environment {
-        IMAGE = 'harshmohta9163/calculator-api'
-        CRED_ID = 'dockerhub-creds'
+        IMAGE = 'harsh9163/calculator-api'
         NOTIFY_EMAIL = 'harshmohta9163@gmail.com'
-        // Add Windows tools to PATH for local Jenkins service
-        PATH = "C:\\Program Files\\Git\\bin;C:\\Program Files\\Git\\cmd;C:\\Users\\dell\\maven\\bin;C:\\Users\\dell\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin;C:\\Users\\dell\\AppData\\Local\\Programs\\Python\\Python312;${env.PATH}"
+        // Jenkins runs as a Windows service: expose Git Bash (sh), Maven, Docker and Python to it.
+        PATH = "C:\\Program Files\\Git\\bin;C:\\Program Files\\Git\\usr\\bin;C:\\Program Files\\Git\\cmd;C:\\Users\\dell\\maven\\bin;C:\\Users\\dell\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin;C:\\Users\\dell\\AppData\\Local\\Programs\\Python\\Python312;${env.PATH}"
     }
 
     stages {
@@ -29,119 +27,60 @@ pipeline {
 
         stage('Build') {
             steps {
-                script {
-                    if (isUnix()) {
-                        sh 'mvn clean package -DskipTests -B'
-                    } else {
-                        bat 'mvn clean package -DskipTests -B'
-                    }
-                }
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+                sh 'mvn clean package -DskipTests -B'
             }
         }
 
         stage('Test') {
             steps {
-                script {
-                    if (isUnix()) {
-                        sh 'mvn test -B'
-                    } else {
-                        bat 'mvn test -B'
-                    }
-                }
+                sh 'mvn test -B'
             }
             post {
                 always {
-                    junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: false
+                    junit 'target/surefire-reports/*.xml'
                 }
             }
         }
 
         stage('Docker Build') {
             steps {
-                script {
-                    def buildCmd = "docker build -t ${IMAGE}:${BUILD_NUMBER} -t ${IMAGE}:latest ."
-                    if (isUnix()) {
-                        sh buildCmd
-                    } else {
-                        bat buildCmd
-                    }
-                }
+                sh 'docker build -t $IMAGE:$BUILD_NUMBER -t $IMAGE:latest .'
             }
         }
 
         stage('Push') {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: env.CRED_ID,
-                    usernameVariable: 'DH_USER',
-                    passwordVariable: 'DH_PASS'
-                )]) {
-                    script {
-                        if (isUnix()) {
-                            sh 'echo "$DH_PASS" | docker login -u "$DH_USER" --password-stdin'
-                            sh "docker push ${IMAGE}:${BUILD_NUMBER}"
-                            sh "docker push ${IMAGE}:latest"
-                            sh 'docker logout'
-                        } else {
-                            bat 'docker login -u "%DH_USER%" -p "%DH_PASS%"'
-                            bat "docker push ${IMAGE}:${BUILD_NUMBER}"
-                            bat "docker push ${IMAGE}:latest"
-                            bat 'docker logout'
-                        }
-                    }
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
+                                                  usernameVariable: 'DH_USER',
+                                                  passwordVariable: 'DH_PASS')]) {
+                    sh 'echo "$DH_PASS" | docker login -u "$DH_USER" --password-stdin'
+                    sh 'docker push $IMAGE:$BUILD_NUMBER'
+                    sh 'docker push $IMAGE:latest'
                 }
             }
         }
 
         stage('Deploy') {
             steps {
-                script {
-                    if (isUnix()) {
-                        sh 'docker compose down --remove-orphans || true'
-                        sh 'docker compose up -d --force-recreate'
-                        sh 'python3 scripts/smoke_test.py || python scripts/smoke_test.py'
-                    } else {
-                        bat 'docker compose down --remove-orphans || exit /b 0'
-                        bat 'docker compose up -d --force-recreate'
-                        bat 'python scripts/smoke_test.py'
-                    }
-                }
+                sh 'docker compose up -d --force-recreate'
+                sh 'python scripts/smoke_test.py'
             }
         }
     }
 
     post {
         success {
-            script {
-                try {
-                    mail to: env.NOTIFY_EMAIL,
-                         subject: "Build #${BUILD_NUMBER} Succeeded - Calculator API",
-                         body: "Pipeline build #${BUILD_NUMBER} completed successfully.\nImage: ${IMAGE}:${BUILD_NUMBER}\nConsole: ${BUILD_URL}"
-                } catch (Exception e) {
-                    echo "Email skipped: ${e.message}"
-                }
-            }
+            mail to: env.NOTIFY_EMAIL,
+                 subject: "Build #${BUILD_NUMBER} SUCCESS - Calculator API",
+                 body: "Build #${BUILD_NUMBER} succeeded.\nImage: ${IMAGE}:${BUILD_NUMBER}\nConsole: ${BUILD_URL}"
         }
         failure {
-            script {
-                try {
-                    mail to: env.NOTIFY_EMAIL,
-                         subject: "Build #${BUILD_NUMBER} Failed - Calculator API",
-                         body: "Pipeline build #${BUILD_NUMBER} failed. Check console: ${BUILD_URL}"
-                } catch (Exception e) {
-                    echo "Email skipped: ${e.message}"
-                }
-            }
+            mail to: env.NOTIFY_EMAIL,
+                 subject: "Build #${BUILD_NUMBER} FAILED - Calculator API",
+                 body: "Build #${BUILD_NUMBER} failed.\nConsole: ${BUILD_URL}"
         }
         always {
-            script {
-                if (isUnix()) {
-                    sh 'docker image prune -f || true'
-                } else {
-                    bat 'docker image prune -f || exit /b 0'
-                }
-            }
+            sh 'docker logout || true'
         }
     }
 }

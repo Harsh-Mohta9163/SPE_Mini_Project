@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: harshmohta9163/calculator-api:latest
+    image: harsh9163/calculator-api:latest
     container_name: calculator-api
     restart: unless-stopped
     environment:
