@@ -38,7 +38,7 @@ The architectural workflow integrates six decoupled components operating in a tr
        ├── 5. Push (Docker Hub credentials store -> harshmohta9163/calculator-api)
        └── 6. Deploy (docker compose up -d -> Actuator health verify)
                │
-               ├── Post Success: Dispatched HTML email to harshmohta9163@gmail.com
+               ├── Post Success: Dispatched HTML email to mohta.harsh9163@gmail.com
                └── Post Failure: Dump diagnostic container logs + alert email
                        │
                        ▼
@@ -98,7 +98,7 @@ The Jenkins CI/CD pipeline is codified in a declarative `Jenkinsfile` committed 
 - **Automated Smoke Test:** Executes a live calculation probe (`GET /api/v1/add?a=10&b=20`) to verify end-to-end proxy forwarding, HTTP payload parsing, and calculation logic.
 
 ### 3.7 Post-Execution & Alerting
-- **Success:** Dispatches a formatted notification email to `harshmohta9163@gmail.com` with commit metadata, Docker Hub URLs, and execution summaries.
+- **Success:** Dispatches a formatted notification email to `mohta.harsh9163@gmail.com` with commit metadata, Docker Hub URLs, and execution summaries.
 - **Failure:** Dispatches an emergency alert with build logs and dumps the latest 50 lines of container diagnostic logs.
 - **Cleanup:** Runs `docker image prune -f` in `always` block to avoid disk exhaustion on the CI runner.
 

@@ -13,7 +13,7 @@ pipeline {
 
     environment {
         IMAGE = 'harsh9163/calculator-api'
-        NOTIFY_EMAIL = 'harshmohta9163@gmail.com'
+        NOTIFY_EMAIL = 'mohta.harsh9163@gmail.com'
         // Jenkins runs as a Windows service: expose Git Bash (sh), Maven, Docker and Python to it.
         PATH = "C:\\Program Files\\Git\\bin;C:\\Program Files\\Git\\usr\\bin;C:\\Program Files\\Git\\cmd;C:\\Users\\dell\\maven\\bin;C:\\Users\\dell\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin;C:\\Users\\dell\\AppData\\Local\\Programs\\Python\\Python312;${env.PATH}"
     }
@@ -62,7 +62,7 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                sh 'docker compose up -d --force-recreate'
+                sh 'docker-compose up -d --force-recreate'
                 sh 'python scripts/smoke_test.py'
             }
         }

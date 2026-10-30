@@ -37,7 +37,7 @@ According to **Section 5 (Deliverables)** of the project specification, the foll
 ---
 
 ### 2. Email Notification (`screenshots/02_email_notification.png`)
-* **Where to capture:** Email inbox of `harshmohta9163@gmail.com` (or local mail client).
+* **Where to capture:** Email inbox of `mohta.harsh9163@gmail.com` (or local mail client).
 * **What must be visible:**
   - Sender: `Jenkins <jenkins@...>`
   - Subject: `SUCCESS: Jenkins Build #<N> - Calculator REST API`

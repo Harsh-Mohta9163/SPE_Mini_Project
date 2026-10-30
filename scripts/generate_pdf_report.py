@@ -180,7 +180,7 @@ def build_pdf(filename="SPE_Mini_Project_Report.pdf"):
     # Metadata Box
     meta_data = [
         [
-            Paragraph("<b>Student:</b> Harsh Mohta (harshmohta9163@gmail.com)", meta_style),
+            Paragraph("<b>Student:</b> Harsh Mohta (mohta.harsh9163@gmail.com)", meta_style),
             Paragraph("<b>GitHub:</b> github.com/Harsh-Mohta9163/SPE_Mini_Project", meta_style)
         ],
         [
@@ -290,7 +290,7 @@ def build_pdf(filename="SPE_Mini_Project_Report.pdf"):
         ],
         [
             Paragraph("<b>Post-Actions</b>", table_cell_bold),
-            Paragraph("<b>Success:</b> Dispatches formatted HTML notification email to <code>harshmohta9163@gmail.com</code> with build metrics.<br/><b>Failure:</b> Dumps diagnostic container logs (last 50 lines) and alerts student.<br/><b>Always:</b> Executes <code>docker image prune -f</code> to reclaim disk space.", table_cell_style)
+            Paragraph("<b>Success:</b> Dispatches formatted HTML notification email to <code>mohta.harsh9163@gmail.com</code> with build metrics.<br/><b>Failure:</b> Dumps diagnostic container logs (last 50 lines) and alerts student.<br/><b>Always:</b> Executes <code>docker image prune -f</code> to reclaim disk space.", table_cell_style)
         ]
     ]
     t_stages2 = Table(p_stages2, colWidths=[110, 413])
