@@ -16,6 +16,12 @@ import urllib.request
 import urllib.error
 import time
 
+# Ensure safe cross-platform console encoding
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
 BASE_URL = sys.argv[1] if len(sys.argv) > 1 else "http://localhost"
 print(f"\n=======================================================")
 print(f"  Calculator REST API - Deployment Verification Suite  ")
