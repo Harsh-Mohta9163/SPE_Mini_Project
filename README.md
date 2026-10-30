@@ -1,4 +1,4 @@
-﻿# Calculator REST API — SPE Mini-Project
+# Calculator REST API — SPE Mini-Project
 
 **CSE 816 — Software Production Engineering**
 M.Tech (CSE) | Term I, 2026-27 | Faculty: Prof. B. Thangaraju
@@ -153,14 +153,38 @@ calculator-devops/
   │       └── java/com/spe/calculator/
   │           ├── service/CalculatorServiceTest.java
   │           └── controller/CalculatorControllerTest.java
-  ├── pom.xml
-  ├── Dockerfile
-  ├── .dockerignore
-  ├── docker-compose.yml
-  ├── nginx.conf
-  ├── Jenkinsfile
-  ├── .gitignore
-  └── README.md
+  ├── scripts/
+  │   ├── generate_pdf_report.py    # ReportLab academic PDF generator
+  │   ├── smoke_test.py             # Python multi-endpoint deployment verification
+  │   └── smoke_test.sh             # Bash multi-endpoint deployment verification
+  ├── pom.xml                       # Maven build specification (Spring Boot 3.3.4)
+  ├── Dockerfile                    # Multi-stage Docker build (Alpine JRE 17)
+  ├── .dockerignore                 # Excludes target/, .git/, and IDE artifacts
+  ├── docker-compose.yml            # Multi-container orchestration (API + Nginx)
+  ├── nginx.conf                    # Reverse proxy gateway configuration
+  ├── Jenkinsfile                   # Declarative 6-stage CI/CD pipeline
+  ├── REPORT.md                     # Comprehensive academic project report
+  ├── REPORT.html                   # Print-optimized HTML report
+  ├── SPE_Mini_Project_Report.pdf   # 3-Page evaluation PDF report
+  ├── SCREENSHOTS_GUIDE.md          # Guide for 5 required rubric screenshots
+  ├── DEMO_SCRIPT.md                # Live demonstration script & viva preparation
+  ├── PHASE_PLAN.md                 # 7-Phase implementation roadmap & tracker
+  ├── .gitignore                    # Git ignore file for Java, Maven, and OS files
+  └── README.md                     # Project overview and instructions
+```
+
+---
+
+## Automated Smoke Testing
+
+To verify all endpoints and Actuator health probe in a single command against the running stack:
+
+```bash
+# Python runner (cross-platform)
+python scripts/smoke_test.py
+
+# Or Bash runner
+bash scripts/smoke_test.sh
 ```
 
 ---
@@ -171,14 +195,25 @@ The Jenkins pipeline is defined in `Jenkinsfile` and includes these stages:
 
 | Stage        | Description                                      |
 |--------------|--------------------------------------------------|
-| Checkout     | Pull latest code from GitHub                     |
-| Build        | `mvn clean package -DskipTests`                  |
-| Test         | `mvn test` + publish JUnit XML results           |
-| Docker Build | Build multi-stage image tagged with build number |
-| Push         | Push image to Docker Hub                         |
-| Deploy       | `docker compose up -d` + health check verify     |
+| Checkout     | Pull latest code from GitHub on push/poll trigger |
+| Build        | `mvn clean package -DskipTests` + archive JAR    |
+| Test         | `mvn test` + publish JUnit XML results (22 tests) |
+| Docker Build | Build multi-stage Alpine image tagged with build #|
+| Push         | Authenticate with Docker Hub (`dockerhub-creds`) |
+| Deploy       | `docker compose up -d` + Actuator health verify  |
+
+---
+
+## Deliverables & Documentation
+
+- **Project Report (PDF):** [`SPE_Mini_Project_Report.pdf`](file:///SPE_Mini_Project_Report.pdf) (Generated via `python scripts/generate_pdf_report.py`)
+- **Report Source (Markdown):** [`REPORT.md`](file:///REPORT.md)
+- **Screenshots Checklist:** [`SCREENSHOTS_GUIDE.md`](file:///SCREENSHOTS_GUIDE.md)
+- **Live Demo Script:** [`DEMO_SCRIPT.md`](file:///DEMO_SCRIPT.md)
+- **Phase Implementation Tracker:** [`PHASE_PLAN.md`](file:///PHASE_PLAN.md)
 
 ---
 
 ## License
 MIT — For educational purposes (SPE Mini-Project, IIIT Bangalore)
+
