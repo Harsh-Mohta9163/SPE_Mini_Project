@@ -2,7 +2,7 @@ package com.spe.calculator.service;
 
 import com.spe.calculator.exception.DivisionByZeroException;
 import org.springframework.stereotype.Service;
-
+/** Additional commment */
 /**
  * Business logic layer for all calculator operations.
  *
